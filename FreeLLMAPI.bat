@@ -1,108 +1,151 @@
 @echo off
-REM FreeLLMAPI — Lanceur tout-en-un (double-clic)
-REM Installe les dépendances, lance avec tray + ouvre dashboard
-
-setlocal
+REM FreeLLMAPI — Lanceur verifie avant de lancer
+setlocal EnableDelayedExpansion
 cd /d "%~dp0"
+chcp 65001 >nul 2>&1
+echo ==========================================
+echo  FreeLLMAPI - Verifications avant lancement
+echo ==========================================
+echo.
 
-:: Vérifie Python
+:: 1. Python version
+echo [1/7] Verification Python...
 where python >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERREUR] Python non trouve. Installez Python 3.10+ depuis https://python.org
+    echo [ERREUR] Python introuvable. Installez Python 3.10+ depuis https://python.org (cochez "Add to PATH")
     pause
     exit /b 1
 )
+for /f "tokens=2" %%v in ('python --version 2^>^&1') do set PYVER=%%v
+echo [OK] Python !PYVER!
 
-:: Vérifie pip
+:: 2. Pip
+echo [2/7] Verification pip...
 python -m pip --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERREUR] pip non disponible
+    echo [ERREUR] pip indisponible (python -m ensurepip)
     pause
     exit /b 1
 )
+echo [OK] pip
 
-:: Vérifie si requirements déjà satisfaits
-echo [1/4] Verification dependances...
-python -c "import fastapi, uvicorn, httpx, cryptography, multipart" 2>nul
+:: 3. Port libre ?
+echo [3/7] Verification port 3001...
+netstat -ano | findstr ":3001" | findstr "LISTENING" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [WARN] Port 3001 deja utilise (serveur deja lance ?)
+    echo       Ouvrez http://localhost:3001 directement ou faites freellm-stop.bat
+    timeout /t 2 >nul
+    start "" "http://localhost:3001"
+    exit /b 0
+)
+echo [OK] Port libre
+
+:: 4. Dossier data + DB inscriptible
+echo [4/7] Verification dossier data...
+if not exist "data" mkdir "data" 2>nul
+if not exist "data\logs" mkdir "data\logs" 2>nul
+echo test > "data\.writetest" 2>nul
 if %errorlevel% neq 0 (
-    echo [1/4] Installation requirements.txt...
+    echo [ERREUR] Dossier data non inscriptible
+    pause
+    exit /b 1
+)
+del "data\.writetest" 2>nul
+echo [OK] data/
+
+:: 5. Dependances
+echo [5/7] Verification dependances...
+python -c "import fastapi, uvicorn, httpx, cryptography" 2>nul
+if %errorlevel% neq 0 (
+    echo [INFO] Installation requirements.txt...
     python -m pip install -r requirements.txt -q
     if %errorlevel% neq 0 (
         echo [WARN] Echec silencieux, reessai verbeux...
         python -m pip install -r requirements.txt
+        if %errorlevel% neq 0 (
+            echo [ERREUR] Installation echouee
+            pause
+            exit /b 1
+        )
     )
+    echo [OK] requirements installes
 ) else (
-    echo [1/4] Requirements deja installes - OK
+    echo [OK] fastapi/uvicorn/httpx/cryptography presents
 )
-
-:: Installe pystray + Pillow pour tray (si pas deja)
 python -c "import pystray, PIL" 2>nul
 if %errorlevel% neq 0 (
-    echo [2/4] Installation tray (pystray + Pillow)...
-    python -m pip install pystray Pillow -q
+    echo [INFO] Installation pystray Pillow (tray)...
+    python -m pip install pystray Pillow -q 2>nul
+    if %errorlevel% neq 0 ( echo [WARN] Tray optionnel non installe ) else ( echo [OK] tray )
 ) else (
-    echo [2/4] pystray/Pillow deja presents - OK
+    echo [OK] pystray/Pillow presents
 )
 
-:: Génère clé encryption si absent
-if not exist .env (
-    echo [3/4] Creation .env avec cle de chiffrement...
-    python -c "import secrets; print('ENCRYPTION_KEY=' + secrets.token_hex(32))" > .env
-    echo PORT=3001 >> .env
-    echo HOST=0.0.0.0 >> .env
-    echo FREEAPI_DB_PATH=./data/freellmapi.db >> .env
-) else (
-    echo [3/4] .env existe - OK
-)
-
-:: Lance avec tray + ouvre dashboard
-echo [4/4] Demarrage FreeLLMAPI (tray + dashboard)...
-echo.
-echo ==========================================
-echo  FreeLLMAPI pret !
-echo  Dashboard : http://localhost:3001
-echo  Icône dans les icônes cachées (bas droite)
-echo  Clic droit sur l'icône -> Quitter pour arreter
-echo ==========================================
-echo.
-
-:: Vérifie que le module freellm est importable
-python -c "import freellm; print('[OK] module freellm importable')" 2>&1
+:: 6. Module freellm importable
+echo [6/7] Verification module freellm...
+python -c "import freellm" 2>nul
 if %errorlevel% neq 0 (
-    echo [ERREUR] Module freellm non trouve. Installation en mode developpement...
+    echo [INFO] Installation freellm en mode developpement...
     python -m pip install -e . -q
     if %errorlevel% neq 0 (
         echo [ERREUR] pip install -e . echoue
         pause
         exit /b 1
     )
-    echo [OK] freellm installe en mode developpement
+    echo [OK] freellm installe
+) else (
+    echo [OK] freellm importable
 )
 
-:: Utilise pythonw si dispo pour sans console, sinon python
+:: 7. .env et cle
+echo [7/7] Verification .env...
+if not exist ".env" (
+    echo [INFO] Creation .env...
+    python -c "import secrets; print('ENCRYPTION_KEY=' + secrets.token_hex(32))" > .env
+    echo PORT=3001 >> .env
+    echo HOST=0.0.0.0 >> .env
+    echo FREEAPI_DB_PATH=./data/freeapi.db >> .env
+    echo [OK] .env cree
+) else (
+    findstr /C:"ENCRYPTION_KEY" .env >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [WARN] ENCRYPTION_KEY manquant dans .env, ajout...
+        python -c "import secrets; print('ENCRYPTION_KEY=' + secrets.token_hex(32))" >> .env
+    )
+    echo [OK] .env present
+)
+
+echo.
+echo [OK] Toutes verifications passees — lancement...
+echo.
+
+:: Lancement
 where pythonw >nul 2>&1
 if %errorlevel%==0 (
-    echo [INFO] Lancement avec pythonw (sans console)...
     start "" pythonw -m freellm --tray
 ) else (
-    echo [INFO] Lancement avec python (console visible)...
     start "" python -m freellm --tray
 )
 
-:: Attend que le serveur reponde (max 15s) puis ouvre navigateur
-echo [INFO] Attente du serveur (max 15s)...
-for /l %%i in (1,1,30) do (
+:: Attente serveur pret (poll /livez)
+echo [INFO] Attente serveur (max 20s)...
+for /l %%i in (1,1,40) do (
     curl -s http://localhost:3001/livez >nul 2>&1
-    if %errorlevel%==0 (
-        echo [OK] Serveur pret
+    if !errorlevel! equ 0 (
+        echo [OK] Serveur pret en %%i s
         goto :open_browser
     )
     timeout /t 1 >nul
 )
-echo [WARN] Serveur pas repondu apres 15s, ouverture quand meme...
+echo [WARN] Serveur pas repondu apres 20s — ouverture quand meme
 :open_browser
 start "" "http://localhost:3001"
-
-echo Lanceur termine. La fenetre peut etre fermee (l'app tourne en arriere-plan).
-echo Si l'icone n'apparait pas, verifiez les icones cachées (fleche bas droite).
-pause
+echo.
+echo ==========================================
+echo  FreeLLMAPI lance ! Dashboard: http://localhost:3001
+echo  Icone dans les icones cachees (fleche en bas droite)
+echo  Fermer cette fenetre est sans risque (serveur en arriere-plan)
+echo ==========================================
+timeout /t 3 >nul
+exit /b 0
