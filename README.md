@@ -107,27 +107,15 @@ Individual AI providers offer generous free tiers (Groq, Cerebras, Google Gemini
 
 ---
 
-## 📸 Screenshots — Python Dashboard
+## 📸 Aperçu
 
 <p align="center">
-  <img src="screenshots/dashboard.png" width="800" alt="Dashboard"><br>
-  <em>Dashboard — Vue d'ensemble avec stats live et routing</em>
+  <img src="screenshots/dashboard.png" width="850" alt="Dashboard - Vue d'ensemble"><br>
+  <em>Dashboard — Vue d'ensemble : stats live, routing intelligent, catalogue 69 modèles</em>
 </p>
 <p align="center">
-  <img src="screenshots/models.png" width="800" alt="Models"><br>
-  <em>Modèles — 69 modèles, filtres Vision/Tools, 40 providers</em>
-</p>
-<p align="center">
-  <img src="screenshots/keys.png" width="800" alt="Keys"><br>
-  <em>Clés — Fournisseurs avec lien direct Obtenir une clé gratuite</em>
-</p>
-<p align="center">
-  <img src="screenshots/agents.png" width="800" alt="Agents"><br>
-  <em>Agents — 15 outils de codage (Claude Code, Codex, Cline...) configurables en 1 clic</em>
-</p>
-<p align="center">
-  <img src="screenshots/analytics.png" width="800" alt="Analytics"><br>
-  <em>Analytique — 7 jours, tokens, latence, succès</em>
+  <img src="screenshots/providers.png" width="850" alt="Fournisseurs"><br>
+  <em>Fournisseurs — 40 providers gratuits, 1-clic Obtenir une clé + test instantané</em>
 </p>
 
 ---
