@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 import os
 import sys
 import threading
@@ -165,7 +165,14 @@ def run_tray(server_thread=None, port: int = 3001):
             pass
         icon.visible = False
         icon.stop()
-        print("[tray] arrÃªt â€” fermeture serveur...")
+        print("[tray] arrêt — fermeture serveur...")
+        try:
+            from .config import get_config
+            cfg = get_config()
+            db_path = cfg.db_path or str(Path(__file__).resolve().parent.parent / "data" / "freeapi.db")
+            Path(db_path).parent.joinpath("freellm.pid").unlink(missing_ok=True)
+        except Exception:
+            pass
         os._exit(0)
 
     def _menu():

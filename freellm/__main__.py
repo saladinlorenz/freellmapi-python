@@ -35,24 +35,50 @@ def main():
     port = args.port if args.port is not None else (int(cfg.port) if isinstance(cfg.port, int) or str(cfg.port).isdigit() else 3001)
     host = args.host if args.host is not None else (str(cfg.host) if cfg.host != "::" else "0.0.0.0")
     use_tray = args.tray
-    if not args.no_tray and not use_tray and os.name == "nt" and sys.stdout is not None and sys.stdout.isatty():
-        try:
-            import pystray  # noqa: F401
-            use_tray = True
-        except ImportError:
-            use_tray = False
+    # Enregistre le PID pour permettre l'arret via --stop / freellm-stop.bat
+    from pathlib import Path
+    import atexit
+    db_path = cfg.db_path or str(Path(__file__).resolve().parent.parent / "data" / "freeapi.db")
+    pid_file = Path(db_path).parent / "freellm.pid"
+    try:
+        pid_file.parent.mkdir(parents=True, exist_ok=True)
+        pid_file.write_text(str(os.getpid()), encoding="utf-8")
+        atexit.register(lambda: pid_file.unlink(missing_ok=True))
+    except Exception:
+        pass
 
     if use_tray:
         import threading
+        # pythonw sans console : sys.stdout/sys.stderr valent None ->
+        # redirection vers data/logs/server.log pour garder logs et erreurs.
+        if sys.stdout is None or sys.stderr is None:
+            try:
+                log_path = Path(db_path).parent / "logs" / "server.log"
+                log_path.parent.mkdir(parents=True, exist_ok=True)
+                log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+                if sys.stdout is None:
+                    sys.stdout = log_file
+                if sys.stderr is None:
+                    sys.stderr = log_file
+            except Exception:
+                pass
         def _serve():
-            print(f"Starting FreeLLMAPI Python on {host}:{port} (tray)")
-            uvicorn.run("freellm.app:create_app", factory=True, host=host, port=port, reload=False, log_level="info")
+            try:
+                print(f"Starting FreeLLMAPI Python on {host}:{port} (tray)")
+                uvicorn.run("freellm.app:create_app", factory=True, host=host, port=port, reload=False, log_level="info")
+            except BaseException:
+                import traceback
+                traceback.print_exc()
         t = threading.Thread(target=_serve, daemon=True)
         t.start()
         import time
         time.sleep(1.2)
-        from .tray import run_tray
-        run_tray(port=port)
+        try:
+            from .tray import run_tray
+            run_tray(port=port)
+        except BaseException:
+            import traceback
+            traceback.print_exc()
         return
 
     print(f"Starting FreeLLMAPI Python on {host}:{port}")
