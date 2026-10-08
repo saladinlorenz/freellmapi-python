@@ -110,12 +110,12 @@ Individual AI providers offer generous free tiers (Groq, Cerebras, Google Gemini
 ## 📸 Aperçu
 
 <p align="center">
-  <img src="screenshots/dashboard.png" width="850" alt="Dashboard - Vue d'ensemble"><br>
-  <em>Dashboard — Vue d'ensemble : stats live, routing intelligent, catalogue 69 modèles</em>
+  <img src="screenshots/Capture.JPG" width="850" alt="FreeLLMAPI - Dashboard"><br>
+  <em>Dashboard — Vue d'ensemble : stats, stratégie de routing, modèles et clés d'API</em>
 </p>
 <p align="center">
-  <img src="screenshots/providers.png" width="850" alt="Fournisseurs"><br>
-  <em>Fournisseurs — 40 providers gratuits, 1-clic Obtenir une clé + test instantané</em>
+  <img src="screenshots/Capture%2002.JPG" width="850" alt="FreeLLMAPI - Documentation et APIs"><br>
+  <em>Documentation intégrée — Endpoints OpenAI, Anthropic, Gemini, Ollama et MCP</em>
 </p>
 
 ---
